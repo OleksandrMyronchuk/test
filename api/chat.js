@@ -1,38 +1,35 @@
 // api/chat.js
-export default async function handler(req, res) {
-    // 1. Set CORS headers so your local script can call this
+const puter = require('puter');
+
+module.exports = async (req, res) => {
+    // 1. Allow your Python script to talk to this
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
     if (req.method === 'OPTIONS') return res.status(200).end();
-    if (req.method !== 'POST') return res.status(405).send('Method Not Allowed');
 
+    // 2. Get the prompt
     const { prompt, model } = req.body;
-    const authHeader = req.headers.authorization; // Bearer YOUR_PUTER_TOKEN
-
-    if (!authHeader) return res.status(401).json({ error: "Missing Token" });
-    const token = authHeader.replace('Bearer ', '');
 
     try {
-        // We use standard fetch to call Puter's internal API relay
-        // or we could use the @heyputer/puter-js npm package.
-        // For simplicity in a single file, we call Puter's AI endpoint:
-        const response = await fetch('https://api.puter.com/v2/ai/chat', {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                messages: [{ role: 'user', content: prompt }],
-                model: model || 'gemini-2.0-flash-lite'
-            })
+        // --- NO LOGIN, NO TOKENS, JUST LIKE THE DOCS ---
+        console.log("Attempting anonymous chat...");
+
+        const response = await puter.ai.chat(prompt, {
+            model: model || 'gemini-2.0-flash'
         });
 
-        const data = await response.json();
-        return res.status(200).json(data);
+        // 3. Send back the result
+        res.status(200).json({ result: response });
+
     } catch (error) {
-        return res.status(500).json({ error: error.message });
+        // If this fails, it means Puter has blocked Vercel's IP address
+        // because it thinks it's a bot.
+        console.error("Puter Error:", error);
+        res.status(500).json({ 
+            error: error.message,
+            hint: "If this says 'Unauthorized' or 'Limit', it is because Vercel servers are not trusted like Browsers."
+        });
     }
-}
+};
