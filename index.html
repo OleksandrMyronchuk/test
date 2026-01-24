@@ -1,32 +1,50 @@
-<!-- interface.html -->
 <!DOCTYPE html>
-<html>
-<body>
-    <!-- Load Puter JS -->
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>My AI Interface</title>
+    <!-- Load Puter v2 -->
     <script src="https://js.puter.com/v2/"></script>
-    <div id="status">Ready</div>
+</head>
+<body>
+    <h1>Playwright AI Controller</h1>
+    <div id="status">Initializing...</div>
+    
+    <!-- Login Button (Visible only if needed) -->
+    <button id="login-btn" style="display:none; padding: 20px; font-size: 20px;" onclick="puter.auth.signIn()">
+        CLICK HERE TO LOGIN ONCE
+    </button>
 
     <script>
-        // Python will call this function directly
-        window.askPuter = async (prompt) => {
+        const statusDiv = document.getElementById('status');
+        const loginBtn = document.getElementById('login-btn');
+
+        // Check login status immediately
+        if (puter.auth.isSignedIn()) {
+            statusDiv.innerText = "Ready for Python";
+        } else {
+            statusDiv.innerText = "Login Required";
+            loginBtn.style.display = 'block';
+        }
+
+        // --- THE API FUNCTION ---
+        // Python Playwright will call this function!
+        window.generateText = async (prompt, model) => {
             try {
-                document.getElementById('status').innerText = "Working...";
+                statusDiv.innerText = "Thinking...";
                 
-                // Call Puter AI (uses browser session)
+                // This runs in the browser, so it uses your cookies (Free!)
                 const response = await puter.ai.chat(prompt, {
-                    model: 'gemini-2.0-flash'
+                    model: model || 'gemini-2.0-flash'
                 });
 
-                // Extract text safely
-                let cleanText = "";
-                if (response && response.message && response.message.content) {
-                    cleanText = response.message.content;
-                } else {
-                    cleanText = JSON.stringify(response);
+                statusDiv.innerText = "Done";
+                
+                // Return clean text to Python
+                if (response?.message?.content) {
+                    return response.message.content;
                 }
-
-                document.getElementById('status').innerText = "Done";
-                return cleanText;
+                return JSON.stringify(response);
 
             } catch (err) {
                 return "Error: " + err.message;
