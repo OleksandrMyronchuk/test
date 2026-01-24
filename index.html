@@ -1,56 +1,37 @@
+<!-- interface.html -->
 <!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Puter API Dashboard</title>
-    <script src="https://js.puter.com/v2/"></script>
-    <style>
-        body { font-family: -apple-system, sans-serif; display: flex; justify-content: center; padding: 40px; background: #fafafa; }
-        .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); max-width: 500px; width: 100%; }
-        button { background: #0070f3; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; width: 100%; font-size: 16px; }
-        .token-box { background: #f0f0f0; padding: 10px; border-radius: 4px; word-break: break-all; font-family: monospace; font-size: 12px; margin-top: 10px; border: 1px solid #ddd; }
-        .hidden { display: none; }
-    </style>
-</head>
+<html>
 <body>
-    <div class="card">
-        <h2>Puter API Relay</h2>
-        <div id="logged-out">
-            <p>You must log in to Puter to get your session token for the local API.</p>
-            <button id="login-btn">Log in with Puter</button>
-        </div>
-        <div id="logged-in" class="hidden">
-            <p style="color: green; font-weight: bold;">✓ Authenticated</p>
-            <p>Copy this <b>Token</b> and use it in your Python script:</p>
-            <div id="token-display" class="token-box"></div>
-            <p><small>Note: This token allows access to your Puter account AI credits. Keep it secret!</small></p>
-        </div>
-    </div>
+    <!-- Load Puter JS -->
+    <script src="https://js.puter.com/v2/"></script>
+    <div id="status">Ready</div>
 
     <script>
-        const loginBtn = document.getElementById('login-btn');
-        const loggedOutDiv = document.getElementById('logged-out');
-        const loggedInDiv = document.getElementById('logged-in');
-        const tokenDisplay = document.getElementById('token-display');
+        // Python will call this function directly
+        window.askPuter = async (prompt) => {
+            try {
+                document.getElementById('status').innerText = "Working...";
+                
+                // Call Puter AI (uses browser session)
+                const response = await puter.ai.chat(prompt, {
+                    model: 'gemini-2.0-flash'
+                });
 
-        async function updateUI() {
-            if (puter.auth.isSignedIn()) {
-                loggedOutDiv.classList.add('hidden');
-                loggedInDiv.classList.remove('hidden');
-                // Get the token from Puter's internal state
-                // Note: v2 handles token management automatically.
-                const user = await puter.auth.getUser();
-                tokenDisplay.innerText = puter.auth.getToken(); 
+                // Extract text safely
+                let cleanText = "";
+                if (response && response.message && response.message.content) {
+                    cleanText = response.message.content;
+                } else {
+                    cleanText = JSON.stringify(response);
+                }
+
+                document.getElementById('status').innerText = "Done";
+                return cleanText;
+
+            } catch (err) {
+                return "Error: " + err.message;
             }
-        }
-
-        loginBtn.onclick = async () => {
-            await puter.auth.signIn();
-            updateUI();
         };
-
-        // Check status on load
-        window.onload = updateUI;
     </script>
 </body>
 </html>
