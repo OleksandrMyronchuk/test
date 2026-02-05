@@ -3,24 +3,25 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Puter AI Controller</title>
+    <title>AI Operations Dashboard</title>
     <!-- Load Puter v2 -->
     <script src="https://js.puter.com/v2/"></script>
     <style>
         :root {
-            --bg-color: #f4f6f8;
-            --card-bg: #ffffff;
-            --text-main: #333;
-            --text-sub: #666;
+            --bg: #111827;
+            --card-bg: #1f2937;
+            --text-main: #f3f4f6;
+            --text-sub: #9ca3af;
             --accent: #3b82f6;
+            --accent-hover: #2563eb;
+            --border: #374151;
             --success: #10b981;
             --error: #ef4444;
-            --border: #e5e7eb;
         }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            background-color: var(--bg-color);
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg);
             color: var(--text-main);
             margin: 0;
             padding: 20px;
@@ -29,286 +30,256 @@
             align-items: center;
         }
 
-        h1 { margin-bottom: 10px; font-size: 1.5rem; }
+        h1 { margin-bottom: 20px; font-size: 1.5rem; letter-spacing: 1px; }
 
         /* Status Bar */
         #status-bar {
-            padding: 10px 20px;
-            background: var(--card-bg);
-            border-radius: 50px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
-            font-weight: 600;
-            margin-bottom: 20px;
+            position: sticky;
+            top: 10px;
+            z-index: 100;
+            padding: 8px 20px;
+            background: rgba(31, 41, 55, 0.9);
+            backdrop-filter: blur(10px);
             border: 1px solid var(--border);
+            border-radius: 50px;
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            margin-bottom: 30px;
         }
 
         .status-dot {
-            height: 10px; width: 10px; background-color: #ccc; border-radius: 50%; display: inline-block;
+            height: 10px; width: 10px; border-radius: 50%;
+            background-color: var(--text-sub);
+            box-shadow: 0 0 5px currentColor;
+            transition: background-color 0.3s;
         }
-        .status-ready .status-dot { background-color: var(--success); }
-        .status-busy .status-dot { background-color: var(--accent); }
-        .status-error .status-dot { background-color: var(--error); }
+        
+        .status-idle .status-dot { background-color: var(--success); box-shadow: 0 0 8px var(--success); }
+        .status-busy .status-dot { background-color: var(--accent); box-shadow: 0 0 8px var(--accent); }
 
-        /* Login Button */
         #login-btn {
-            background-color: var(--accent);
-            color: white;
-            border: none;
-            padding: 12px 24px;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 16px;
-            transition: opacity 0.2s;
-            margin-bottom: 20px;
+            background: var(--accent); color: white; border: none;
+            padding: 8px 16px; border-radius: 6px; cursor: pointer;
+            margin-bottom: 20px; font-weight: bold;
         }
-        #login-btn:hover { opacity: 0.9; }
+        #login-btn:hover { background: var(--accent-hover); }
 
         /* Logs Container */
         #logs-container {
-            width: 100%;
-            max-width: 800px;
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
+            width: 100%; max-width: 900px;
+            display: flex; flex-direction: column; gap: 20px;
         }
 
-        /* Log Card */
+        /* Request Card */
         .log-card {
             background: var(--card-bg);
             border: 1px solid var(--border);
             border-radius: 12px;
-            padding: 16px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.02);
-            transition: all 0.2s ease;
+            overflow: hidden;
+            animation: slideIn 0.3s ease-out;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+        }
+
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Card Header */
+        .card-header {
+            padding: 12px 16px;
+            background: rgba(255,255,255,0.03);
+            border-bottom: 1px solid var(--border);
+            display: flex; justify-content: space-between; align-items: center;
+        }
+
+        .badges { display: flex; gap: 8px; }
+        
+        .badge {
+            font-size: 0.75rem; padding: 2px 8px; border-radius: 4px;
+            font-weight: 600; text-transform: uppercase;
+        }
+        .badge-model { background: #1e3a8a; color: #93c5fd; }
+        .badge-time { background: #064e3b; color: #6ee7b7; font-family: monospace; }
+        .badge-error { background: #450a0a; color: #fca5a5; }
+
+        /* Collapsible Details */
+        details { border-bottom: 1px solid var(--border); }
+        details:last-child { border-bottom: none; }
+        
+        summary {
+            padding: 12px 16px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 500;
+            user-select: none;
+            display: flex; justify-content: space-between;
+            color: var(--text-sub);
+            transition: color 0.2s, background 0.2s;
         }
         
-        .log-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 12px;
-            font-size: 0.9rem;
-            color: var(--text-sub);
-            border-bottom: 1px solid var(--border);
-            padding-bottom: 8px;
-        }
+        summary:hover { color: var(--text-main); background: rgba(255,255,255,0.02); }
+        details[open] summary { color: var(--accent); background: rgba(59, 130, 246, 0.1); }
+        
+        .meta-info { font-size: 0.75rem; opacity: 0.7; font-family: monospace; }
 
-        .badge {
-            padding: 2px 8px;
-            border-radius: 4px;
-            font-size: 0.75rem;
-            font-weight: bold;
-            text-transform: uppercase;
-        }
-        .badge.model { background: #e0f2fe; color: #0369a1; }
-        .badge.time { background: #f3f4f6; color: #374151; }
-        .badge.error { background: #fee2e2; color: #b91c1c; }
-
-        /* Spoilers (Details/Summary) */
-        details {
-            background: #fafafa;
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            margin-bottom: 8px;
-            overflow: hidden;
-        }
-
-        details[open] { background: #fff; }
-
-        summary {
-            padding: 10px;
-            cursor: pointer;
-            font-weight: 500;
-            font-size: 0.9rem;
-            list-style: none; /* Hide default arrow */
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            background: #f8fafc;
-        }
-
-        summary::-webkit-details-marker { display: none; }
-
-        summary:hover { background: #f1f5f9; }
-
-        summary::after {
-            content: '+'; 
-            font-weight: bold;
-            margin-left: 10px;
-        }
-        details[open] summary::after { content: '-'; }
-
-        .content-box {
-            padding: 12px;
-            font-family: "Menlo", "Consolas", monospace;
+        .content {
+            padding: 16px;
+            font-family: 'Consolas', 'Monaco', monospace;
             font-size: 0.85rem;
-            white-space: pre-wrap; /* Keeps formatting */
-            color: var(--text-main);
+            line-height: 1.5;
+            white-space: pre-wrap;
+            background: #111827;
+            color: #d1d5db;
             border-top: 1px solid var(--border);
-            max-height: 300px;
+            max-height: 400px;
             overflow-y: auto;
         }
 
-        .length-tag {
-            font-size: 0.75rem;
-            color: var(--text-sub);
-            font-weight: normal;
+        /* Image styling */
+        .req-image {
+            max-width: 200px;
+            max-height: 200px;
+            border-radius: 6px;
+            border: 1px solid var(--border);
+            margin-top: 10px;
+            display: block;
         }
+
+        .error-msg { color: var(--error); }
     </style>
 </head>
 <body>
 
-    <h1>Playwright AI Controller</h1>
-    
-    <div id="status-bar">
-        <span class="status-dot"></span>
-        <span id="status-text">Initializing...</span>
+    <div id="status-bar" class="status-idle">
+        <div class="status-dot"></div>
+        <span id="status-text">System Ready</span>
     </div>
 
     <button id="login-btn" style="display:none;" onclick="puter.auth.signIn()">
-        Login to Puter.com
+        ⚠ AUTHENTICATE
     </button>
 
     <div id="logs-container">
-        <!-- Logs will be inserted here -->
+        <!-- Cards will be injected here via JS -->
     </div>
 
     <script>
-        const statusText = document.getElementById('status-text');
-        const statusBar = document.getElementById('status-bar');
-        const loginBtn = document.getElementById('login-btn');
-        const logsContainer = document.getElementById('logs-container');
+        // --- UI UTILITIES ---
+        const $ = id => document.getElementById(id);
+        const setStatus = (state, msg) => {
+            $('status-bar').className = `status-${state}`; // idle, busy
+            $('status-text').innerText = msg;
+        };
 
-        // Helper to update status UI
-        function setStatus(state, message) {
-            statusBar.className = `status-${state}`; // ready, busy, error
-            statusText.innerText = message;
+        // Check Login
+        if (!puter.auth.isSignedIn()) {
+            $('login-btn').style.display = 'block';
+            setStatus('busy', 'Waiting for Login...');
         }
 
-        // Check login status
-        if (puter.auth.isSignedIn()) {
-            setStatus('ready', "Ready for Python Requests");
-        } else {
-            setStatus('error', "Authentication Required");
-            loginBtn.style.display = 'block';
-        }
+        function createCard(id, prompt, model, imageBase64) {
+            const container = $('logs-container');
+            const div = document.createElement('div');
+            div.className = 'log-card';
+            div.id = id;
 
-        // --- UI GENERATION HELPER ---
-        function createLogCard(id, prompt, model) {
-            const card = document.createElement('div');
-            card.className = 'log-card';
-            card.id = id;
+            // Generate Image HTML if present
+            let imageHtml = '';
+            if (imageBase64) {
+                // Ensure proper data URI format
+                const imgSrc = imageBase64.startsWith('data:') ? imageBase64 : `data:image/png;base64,${imageBase64}`;
+                imageHtml = `<img src="${imgSrc}" class="req-image" alt="Request Image">`;
+            }
 
-            card.innerHTML = `
-                <div class="log-header">
-                    <div>
-                        <span class="badge model">${model || 'Default'}</span>
+            div.innerHTML = `
+                <div class="card-header">
+                    <div class="badges">
+                        <span class="badge badge-model">${model || 'default'}</span>
+                        <span class="badge badge-time" id="${id}-timer">Running...</span>
                     </div>
-                    <div>
-                        <span class="badge time" id="${id}-time">Running...</span>
-                    </div>
+                    <div style="font-size: 0.8rem; color: #666;">ID: ${id.split('-')[1]}</div>
                 </div>
 
-                <!-- 1. Request Spoiler -->
-                <details>
+                <!-- INPUT SECTION -->
+                <details open>
                     <summary>
-                        Input Request 
-                        <span class="length-tag">Len: ${prompt.length} chars</span>
+                        <span>⬇ IN (Request)</span>
+                        <span class="meta-info">Len: ${prompt.length} ${imageBase64 ? '+ IMG' : ''}</span>
                     </summary>
-                    <div class="content-box">${escapeHtml(prompt)}</div>
+                    <div class="content">${escapeHtml(prompt)}${imageHtml}</div>
                 </details>
 
-                <!-- 2. Response Spoiler (Empty initially) -->
-                <details id="${id}-resp-details" style="display:none">
-                    <summary id="${id}-resp-summary">
-                        AI Response 
-                        <span class="length-tag" id="${id}-resp-len">Waiting...</span>
+                <!-- OUTPUT SECTION -->
+                <details id="${id}-out-details">
+                    <summary>
+                        <span>⬆ OUT (Response)</span>
+                        <span class="meta-info" id="${id}-out-meta">Waiting...</span>
                     </summary>
-                    <div class="content-box" id="${id}-resp-content"></div>
+                    <div class="content" id="${id}-out-content">Generating...</div>
                 </details>
-
-                <!-- Error Box (Hidden initially) -->
-                <div id="${id}-error" style="display:none; color: var(--error); padding: 10px; font-weight: bold;"></div>
             `;
             
-            // Insert at the top
-            logsContainer.insertBefore(card, logsContainer.firstChild);
-            return card;
+            // Prepend to show newest first
+            container.insertBefore(div, container.firstChild);
         }
 
         function escapeHtml(text) {
             if (!text) return "";
-            return text
-                .replace(/&/g, "&amp;")
-                .replace(/</g, "&lt;")
-                .replace(/>/g, "&gt;")
-                .replace(/"/g, "&quot;")
-                .replace(/'/g, "&#039;");
+            return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
         }
 
-        // --- THE API FUNCTION ---
-        window.generateText = async (prompt, model) => {
-            const requestId = 'req-' + Date.now();
-            const startTime = Date.now();
+        // --- MAIN API FUNCTION ---
+        // Python calls this! 
+        // We added 'imageBase64' as a third argument.
+        window.generateText = async (prompt, model, imageBase64) => {
+            const id = 'req-' + Date.now();
+            const start = performance.now();
             
-            // 1. Update UI to Busy
-            setStatus('busy', "Processing Request...");
-            
-            // 2. Create Log Card
-            createLogCard(requestId, prompt, model);
+            setStatus('busy', 'Processing AI Request...');
+            createCard(id, prompt, model, imageBase64);
 
             try {
-                // 3. Call Puter AI
-                const response = await puter.ai.chat(prompt, { model: model });
+                // Prepare Puter Options
+                const options = { model: model };
                 
-                // 4. Calculate Data
-                const endTime = Date.now();
-                const duration = ((endTime - startTime) / 1000).toFixed(2); // Seconds
-                
-                let finalText = "";
-                if (response?.message?.content) {
-                    finalText = response.message.content;
-                } else {
-                    finalText = JSON.stringify(response);
+                // If image exists, add it to options (Standard Puter v2 Multimodal)
+                if (imageBase64) {
+                    options.image = imageBase64; 
                 }
 
-                // 5. Update UI with Success
-                const timeBadge = document.getElementById(`${requestId}-time`);
-                const respDetails = document.getElementById(`${requestId}-resp-details`);
-                const respSummary = document.getElementById(`${requestId}-resp-len`);
-                const respContent = document.getElementById(`${requestId}-resp-content`);
-
-                timeBadge.innerText = `${duration}s`;
-                timeBadge.style.color = "green";
+                // CALL PUTER AI
+                const response = await puter.ai.chat(prompt, options);
                 
-                respDetails.style.display = 'block';
-                respDetails.open = true; // Auto open response? Optional.
-                respSummary.innerText = `Len: ${finalText.length} chars`;
-                respContent.innerText = finalText;
+                // Process Result
+                const end = performance.now();
+                const duration = ((end - start) / 1000).toFixed(2);
+                
+                let finalText = "";
+                if (typeof response === 'string') finalText = response;
+                else if (response?.message?.content) finalText = response.message.content;
+                else finalText = JSON.stringify(response, null, 2);
 
-                setStatus('ready', "Ready (Last call success)");
-
+                // Update UI
+                $(`${id}-timer`).innerText = `${duration}s`;
+                $(`${id}-out-content`).innerText = finalText;
+                $(`${id}-out-meta`).innerText = `Len: ${finalText.length}`;
+                $(`${id}-out-details`).open = true; // Auto-expand result
+                
+                setStatus('idle', 'Ready');
                 return finalText;
 
             } catch (err) {
-                const endTime = Date.now();
-                const duration = ((endTime - startTime) / 1000).toFixed(2);
-
-                // 6. Update UI with Error
-                const timeBadge = document.getElementById(`${requestId}-time`);
-                const errorDiv = document.getElementById(`${requestId}-error`);
+                const end = performance.now();
+                $(`${id}-timer`).innerText = `${((end - start)/1000).toFixed(2)}s`;
+                $(`${id}-timer`).className = 'badge badge-error';
                 
-                timeBadge.innerText = `${duration}s (Failed)`;
-                timeBadge.classList.replace('time', 'error');
-
-                errorDiv.style.display = 'block';
-                errorDiv.innerText = "Error: " + err.message;
-
-                setStatus('ready', "Ready (Last call failed)");
+                $(`${id}-out-content`).innerHTML = `<span class="error-msg">Error: ${err.message}</span>`;
+                $(`${id}-out-details`).open = true;
                 
+                setStatus('idle', 'Error in last request');
                 return "Error: " + err.message;
             }
         };
