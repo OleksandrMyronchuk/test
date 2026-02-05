@@ -2,51 +2,313 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>My AI Interface</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Puter AI Controller</title>
     <!-- Load Puter v2 -->
     <script src="https://js.puter.com/v2/"></script>
+    <style>
+        :root {
+            --bg-color: #f4f6f8;
+            --card-bg: #ffffff;
+            --text-main: #333;
+            --text-sub: #666;
+            --accent: #3b82f6;
+            --success: #10b981;
+            --error: #ef4444;
+            --border: #e5e7eb;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        h1 { margin-bottom: 10px; font-size: 1.5rem; }
+
+        /* Status Bar */
+        #status-bar {
+            padding: 10px 20px;
+            background: var(--card-bg);
+            border-radius: 50px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            font-weight: 600;
+            margin-bottom: 20px;
+            border: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .status-dot {
+            height: 10px; width: 10px; background-color: #ccc; border-radius: 50%; display: inline-block;
+        }
+        .status-ready .status-dot { background-color: var(--success); }
+        .status-busy .status-dot { background-color: var(--accent); }
+        .status-error .status-dot { background-color: var(--error); }
+
+        /* Login Button */
+        #login-btn {
+            background-color: var(--accent);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: opacity 0.2s;
+            margin-bottom: 20px;
+        }
+        #login-btn:hover { opacity: 0.9; }
+
+        /* Logs Container */
+        #logs-container {
+            width: 100%;
+            max-width: 800px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        /* Log Card */
+        .log-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 16px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+            transition: all 0.2s ease;
+        }
+        
+        .log-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+            font-size: 0.9rem;
+            color: var(--text-sub);
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 8px;
+        }
+
+        .badge {
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+        .badge.model { background: #e0f2fe; color: #0369a1; }
+        .badge.time { background: #f3f4f6; color: #374151; }
+        .badge.error { background: #fee2e2; color: #b91c1c; }
+
+        /* Spoilers (Details/Summary) */
+        details {
+            background: #fafafa;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            margin-bottom: 8px;
+            overflow: hidden;
+        }
+
+        details[open] { background: #fff; }
+
+        summary {
+            padding: 10px;
+            cursor: pointer;
+            font-weight: 500;
+            font-size: 0.9rem;
+            list-style: none; /* Hide default arrow */
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #f8fafc;
+        }
+
+        summary::-webkit-details-marker { display: none; }
+
+        summary:hover { background: #f1f5f9; }
+
+        summary::after {
+            content: '+'; 
+            font-weight: bold;
+            margin-left: 10px;
+        }
+        details[open] summary::after { content: '-'; }
+
+        .content-box {
+            padding: 12px;
+            font-family: "Menlo", "Consolas", monospace;
+            font-size: 0.85rem;
+            white-space: pre-wrap; /* Keeps formatting */
+            color: var(--text-main);
+            border-top: 1px solid var(--border);
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .length-tag {
+            font-size: 0.75rem;
+            color: var(--text-sub);
+            font-weight: normal;
+        }
+    </style>
 </head>
 <body>
+
     <h1>Playwright AI Controller</h1>
-    <div id="status">Initializing...</div>
     
-    <!-- Login Button (Visible only if needed) -->
-    <button id="login-btn" style="display:none; padding: 20px; font-size: 20px;" onclick="puter.auth.signIn()">
-        CLICK HERE TO LOGIN ONCE
+    <div id="status-bar">
+        <span class="status-dot"></span>
+        <span id="status-text">Initializing...</span>
+    </div>
+
+    <button id="login-btn" style="display:none;" onclick="puter.auth.signIn()">
+        Login to Puter.com
     </button>
 
-    <script>
-        const statusDiv = document.getElementById('status');
-        const loginBtn = document.getElementById('login-btn');
+    <div id="logs-container">
+        <!-- Logs will be inserted here -->
+    </div>
 
-        // Check login status immediately
+    <script>
+        const statusText = document.getElementById('status-text');
+        const statusBar = document.getElementById('status-bar');
+        const loginBtn = document.getElementById('login-btn');
+        const logsContainer = document.getElementById('logs-container');
+
+        // Helper to update status UI
+        function setStatus(state, message) {
+            statusBar.className = `status-${state}`; // ready, busy, error
+            statusText.innerText = message;
+        }
+
+        // Check login status
         if (puter.auth.isSignedIn()) {
-            statusDiv.innerText = "Ready for Python";
+            setStatus('ready', "Ready for Python Requests");
         } else {
-            statusDiv.innerText = "Login Required";
+            setStatus('error', "Authentication Required");
             loginBtn.style.display = 'block';
         }
 
-        // --- THE API FUNCTION ---
-        // Python Playwright will call this function!
-        window.generateText = async (prompt, model) => {
-            try {
-                statusDiv.innerText = "Thinking...";
-                
-                // This runs in the browser, so it uses your cookies (Free!)
-                const response = await puter.ai.chat(prompt, {
-                    model: model
-                });
+        // --- UI GENERATION HELPER ---
+        function createLogCard(id, prompt, model) {
+            const card = document.createElement('div');
+            card.className = 'log-card';
+            card.id = id;
 
-                statusDiv.innerText = "Done";
+            card.innerHTML = `
+                <div class="log-header">
+                    <div>
+                        <span class="badge model">${model || 'Default'}</span>
+                    </div>
+                    <div>
+                        <span class="badge time" id="${id}-time">Running...</span>
+                    </div>
+                </div>
+
+                <!-- 1. Request Spoiler -->
+                <details>
+                    <summary>
+                        Input Request 
+                        <span class="length-tag">Len: ${prompt.length} chars</span>
+                    </summary>
+                    <div class="content-box">${escapeHtml(prompt)}</div>
+                </details>
+
+                <!-- 2. Response Spoiler (Empty initially) -->
+                <details id="${id}-resp-details" style="display:none">
+                    <summary id="${id}-resp-summary">
+                        AI Response 
+                        <span class="length-tag" id="${id}-resp-len">Waiting...</span>
+                    </summary>
+                    <div class="content-box" id="${id}-resp-content"></div>
+                </details>
+
+                <!-- Error Box (Hidden initially) -->
+                <div id="${id}-error" style="display:none; color: var(--error); padding: 10px; font-weight: bold;"></div>
+            `;
+            
+            // Insert at the top
+            logsContainer.insertBefore(card, logsContainer.firstChild);
+            return card;
+        }
+
+        function escapeHtml(text) {
+            if (!text) return "";
+            return text
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+
+        // --- THE API FUNCTION ---
+        window.generateText = async (prompt, model) => {
+            const requestId = 'req-' + Date.now();
+            const startTime = Date.now();
+            
+            // 1. Update UI to Busy
+            setStatus('busy', "Processing Request...");
+            
+            // 2. Create Log Card
+            createLogCard(requestId, prompt, model);
+
+            try {
+                // 3. Call Puter AI
+                const response = await puter.ai.chat(prompt, { model: model });
                 
-                // Return clean text to Python
+                // 4. Calculate Data
+                const endTime = Date.now();
+                const duration = ((endTime - startTime) / 1000).toFixed(2); // Seconds
+                
+                let finalText = "";
                 if (response?.message?.content) {
-                    return response.message.content;
+                    finalText = response.message.content;
+                } else {
+                    finalText = JSON.stringify(response);
                 }
-                return JSON.stringify(response);
+
+                // 5. Update UI with Success
+                const timeBadge = document.getElementById(`${requestId}-time`);
+                const respDetails = document.getElementById(`${requestId}-resp-details`);
+                const respSummary = document.getElementById(`${requestId}-resp-len`);
+                const respContent = document.getElementById(`${requestId}-resp-content`);
+
+                timeBadge.innerText = `${duration}s`;
+                timeBadge.style.color = "green";
+                
+                respDetails.style.display = 'block';
+                respDetails.open = true; // Auto open response? Optional.
+                respSummary.innerText = `Len: ${finalText.length} chars`;
+                respContent.innerText = finalText;
+
+                setStatus('ready', "Ready (Last call success)");
+
+                return finalText;
 
             } catch (err) {
+                const endTime = Date.now();
+                const duration = ((endTime - startTime) / 1000).toFixed(2);
+
+                // 6. Update UI with Error
+                const timeBadge = document.getElementById(`${requestId}-time`);
+                const errorDiv = document.getElementById(`${requestId}-error`);
+                
+                timeBadge.innerText = `${duration}s (Failed)`;
+                timeBadge.classList.replace('time', 'error');
+
+                errorDiv.style.display = 'block';
+                errorDiv.innerText = "Error: " + err.message;
+
+                setStatus('ready', "Ready (Last call failed)");
+                
                 return "Error: " + err.message;
             }
         };
